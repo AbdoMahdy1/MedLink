@@ -1,4 +1,5 @@
-﻿using Core.Entities;
+﻿using Core.Common;
+using Core.Entities;
 using Core.RepositoryInterfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -51,6 +52,22 @@ namespace WebAPI.Controllers
             _uow.NurseServices.Update(ns);
             await _uow.CompleteAsync();
             return Ok("Price updated");
+        }
+
+        [HttpGet("Search")]
+        public async Task<IActionResult> Search([FromQuery] NurseFilterParams filters)
+        {
+            var result = await _uow.Nurses.SearchAsync(filters);
+            return Ok(new
+            {
+                result.Page,
+                result.PageSize,
+                result.TotalCount,
+                result.TotalPages,
+                result.HasNext,
+                result.HasPrevious,
+                items = result.Items.Select(MapToDto)   // MapToDto اللي عندنا
+            });
         }
 
         private static NurseListDto MapToDto(Nurse n) => new()

@@ -13,7 +13,5 @@ namespace WebAPI.DTOs.Account
         public string Gender { get; set; }
         public string? Description { get; set; }
         public int ExperienceYears { get; set; }
-        public List<IFormFile>? CvFiles { get; set; } = new();
-        public IFormFile? ProfilePhoto { get; set; }
     }
 }

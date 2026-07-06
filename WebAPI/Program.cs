@@ -102,11 +102,10 @@ namespace WebAPI
 
             // ---------------- Pipeline ----------------
 
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+
+            app.UseSwagger();
+            app.UseSwaggerUI();
+
 
             // Seed roles + admin
             using (var scope = app.Services.CreateScope())
@@ -116,6 +115,8 @@ namespace WebAPI
                 var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
                 await DbSeeder.SeedAsync(userManager, roleManager);
             }
+
+            app.MapGet("/", () => Results.Redirect("/swagger"));
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();

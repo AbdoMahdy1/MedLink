@@ -79,9 +79,12 @@ namespace WebAPI.Controllers
             if (ns is null) return NotFound("Service not found");
             if (ns.NurseId != NurseId) return Forbid();
 
+            if (!ns.SystemService.IsCareService)
+                return BadRequest("مينفعش تحذف غير خدمات الرعاية");
+
             _uow.NurseServices.Delete(ns);
             await _uow.CompleteAsync();
-            return Ok("تم حذف الخدمة");
+            return Ok("تم حذف خدمة الرعاية");
         }
 
         // السعر: لو ثابت بياخد FixedPrice، لو رينج لازم يكون بين Min و Max

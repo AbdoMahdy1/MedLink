@@ -1,4 +1,5 @@
-﻿using Core.Entities;
+﻿using Core.Common;
+using Core.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,5 +12,6 @@ namespace Core.RepositoryInterfaces
     {
         Task<Nurse?> GetWithDetailsAsync(string id);
         Task<IReadOnlyList<Nurse>> GetAllWithDetailsAsync(NurseStatus? status = null);
+        Task<PagedResult<Nurse>> SearchAsync(NurseFilterParams filters);
     }
 }

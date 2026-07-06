@@ -15,6 +15,7 @@ namespace Infrastructure.EntitiesConfiguration
         {
             b.HasKey(r => r.Id);
             b.Property(r => r.Description).HasMaxLength(500);
+            b.HasIndex(r => new { r.PatientId, r.NurseId }).IsUnique();
         }
     }
 }

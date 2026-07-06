@@ -10,6 +10,5 @@ namespace WebAPI.DTOs.Account
         public int Age { get; set; }
         public string Address { get; set; }
         public string Gender { get; set; }
-        public IFormFile? ProfilePhoto { get; set; }
     }
 }

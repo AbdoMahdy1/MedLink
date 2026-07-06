@@ -1,6 +1,7 @@
 ﻿using Core.Entities;
 using Core.RepositoryInterfaces;
 using Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +24,8 @@ namespace WebAPI.Controllers
         private readonly IUnitOfWork _uow;
         private readonly IFileService _files;
 
+        private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
         public AccountController(UserManager<AppUser> users, SignInManager<AppUser> signIn,
             IUnitOfWork uow, IFileService files)
         {
@@ -33,7 +36,6 @@ namespace WebAPI.Controllers
         }
 
         [HttpPost("Register-Patient")]
-        [Consumes("multipart/form-data")]
         public async Task<IActionResult> RegisterPatient([FromForm] RegisterPatientDto dto)
         {
             var user = new AppUser { UserName = dto.Email, Email = dto.Email };
@@ -49,16 +51,15 @@ namespace WebAPI.Controllers
                 Address = dto.Address,
                 Gender = dto.Gender
             };
-            if (dto.ProfilePhoto is not null)
-                patient.ImageUrl = await _files.SaveAsync(dto.ProfilePhoto, "patients");
 
             await _uow.Patients.AddAsync(patient);
             await _uow.CompleteAsync();
-            return Ok("Patient registered successfully");
+
+            await _signIn.SignInAsync(user, isPersistent: true); // بيحط الكوكي فوراً
+            return Ok(new { userId = user.Id, message = "Basic info saved. Continue to documents." });
         }
 
         [HttpPost("Register-Nurse")]
-        [Consumes("multipart/form-data")]
         public async Task<IActionResult> RegisterNurse([FromForm] RegisterNurseDto dto)
         {
             var user = new AppUser { UserName = dto.Email, Email = dto.Email };
@@ -78,15 +79,6 @@ namespace WebAPI.Controllers
                 Status = NurseStatus.Pending
             };
 
-            // صورة البروفايل
-            if (dto.ProfilePhoto is not null)
-                nurse.ImageUrl = await _files.SaveAsync(dto.ProfilePhoto, "nurses");
-
-            // ملفات الـ CV (مسموح PDF/Word)
-            if (dto.CvFiles is not null)
-                foreach (var cv in dto.CvFiles)
-                    nurse.CvFiles.Add(await _files.SaveAsync(cv, "cvs", allowDocuments: true));
-
             await _uow.Nurses.AddAsync(nurse);
 
             // ضيف الخدمات الـ Default تلقائي
@@ -99,7 +91,48 @@ namespace WebAPI.Controllers
             }));
 
             await _uow.CompleteAsync();
-            return Ok("Nurse registered, pending approval");
+
+            await _signIn.SignInAsync(user, isPersistent: true); // بيحط الكوكي فوراً
+            return Ok(new { userId = user.Id, message = "Basic info saved. Continue to documents." });
+        }
+
+
+        [Authorize(Roles = "Nurse")]
+        [HttpPost("Nurse-Documents")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadNurseDocuments([FromForm] NurseDocumentsDto dto)
+        {
+            var nurse = await _uow.Nurses.GetByIdAsync(UserId);
+            if (nurse is null) return NotFound();
+
+            if (dto.ProfilePhoto is not null)
+            {
+                _files.Delete(nurse.ImageUrl);
+                nurse.ImageUrl = await _files.SaveAsync(dto.ProfilePhoto, "nurses");
+            }
+            if (dto.CvFiles is not null)
+                foreach (var cv in dto.CvFiles)
+                    nurse.CvFiles.Add(await _files.SaveAsync(cv, "cvs", allowDocuments: true));
+
+            _uow.Nurses.Update(nurse);
+            await _uow.CompleteAsync();
+            return Ok(new { nurse.ImageUrl, nurse.CvFiles });
+        }
+
+        // رفع صورة المريض — الشاشة اللي بعد التسجيل بتناديها
+        [Authorize(Roles = "Patient")]
+        [HttpPost("Patient-Photo")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadPatientPhoto([FromForm] PatientPhotoDto dto)
+        {
+            var patient = await _uow.Patients.GetByIdAsync(UserId);
+            if (patient is null) return NotFound();
+
+            _files.Delete(patient.ImageUrl);
+            patient.ImageUrl = await _files.SaveAsync(dto.ProfilePhoto, "patients");
+            _uow.Patients.Update(patient);
+            await _uow.CompleteAsync();
+            return Ok(new { patient.ImageUrl });
         }
 
 
